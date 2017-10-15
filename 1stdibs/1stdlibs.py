@@ -22,6 +22,7 @@ def is_new_product(conn, cursor, product_id):
     sql = 'select * from product where product_id=%d' % product_id
     cursor.execute(sql)
     product = cursor.fetchone()
+
     if product:
         return False
     return True
@@ -46,6 +47,7 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
             product = get_url(conn, cursor, session, product_link, category_id, category2_id, category3_id)
             loop_leave = time.time()
             logger.info('scraping product:[%s] cost %2f sec ...', product_link, loop_leave - loop_enter)
+            put_product(conn, cursor, product)
             put_status(conn, cursor, product_id, product['price'], product['status'])
         else:
             product_price = item.xpath('./span[@class="product-price"]/span/@data-usd')
@@ -84,7 +86,7 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     # data_item = json.loads(data_item)
 
     product_id = data['id']
-    title = data['titleCondensed']
+    title = data['titleCondensed'].replace('"','')
     price = data['retailPrice']['USD'] if data['retailPrice'] else 0
     status = 0
     if data['isSold']:
@@ -109,7 +111,7 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     creator = detailLinks.get('creator', {})
     creator = ', '.join(creator)
 
-    material = detailLinks.get('materialsAndTechniques')
+    material = detailLinks.get('materialsAndTechniques', {})
     material = ', '.join(material)
 
     style_of = detailLinks.get('styleOf', {})
@@ -122,7 +124,7 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     item['creator'] = creator
     item['material'] = material
 
-    item['timestamp'] = datetime.now()
+    item['timestamp'] = datetime.now().strftime('%Y-%m-%d')
 
     return item
 
@@ -134,14 +136,15 @@ def put_product(conn, cursor, item):
                      item['period_of'], item['style_of'], item['origin'], item['period'],
                      item['material'], item['creator'], item['timestamp'])
 
+    print(sql)
     cursor.execute(sql)
     conn.commit()
 
 def put_status(conn, cursor, product_id, product_price, product_status):
 
     logger.info('detect new status of product:[%d] ...', product_id)
-    sql = 'insert into status (product_id, price, status, timestamp)' \
-        'values (%d %d %d "%s")' % (product_id, product_price, product_status, datetime.now())
+    sql = 'insert into status (product_id, price, status, timestamp) ' \
+        'values (%d, %d, %d, "%s")' % (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d'))
     cursor.execute(sql)
     conn.commit()
 
