@@ -169,7 +169,7 @@ def get_category(conn, cursor, link, category2_id, category3_id):
 
     session = requests.session()
 
-    html = session.get(link, timeout=10)
+    html = session.get(link)
     sel = etree.HTML(html.text)
     total_pages = sel.xpath('//ul[@class="pagination-list cf"]/@data-tp')[0]
     total_pages = int(total_pages)
