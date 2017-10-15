@@ -9,6 +9,7 @@ import logging
 import sys
 import pymysql
 import json
+from datetime import datetime
 
 logger = logging.getLogger('SCRAPING-1STDLIBS')
 fmt = '[%(name)s][%(levelname)s]:%(message)s'
@@ -17,111 +18,197 @@ h.setFormatter(logging.Formatter(fmt))
 logger.addHandler(h)
 logger.setLevel(logging.INFO)
 
+def is_new_product(conn, cursor, product_id):
+    sql = 'select * from product where product_id=%d' % product_id
+    cursor.execute(sql)
+    product = cursor.fetchone()
+    if product:
+        return False
+    return True
 
-
-def get_urls(link):
+def get_page(conn, cursor, session, link, category_id, category2_id, category3_id):
 
     base_url = 'https://www.1stdibs.com'
-    start_url = link
-
-    s = requests.session()
-    html = s.get(start_url)
+    html = session.get(link)
     sel = etree.HTML(html.text)
-    urls = sel.xpath('//a[@class="product-link"]/@href')
-    urls = [base_url + url for url in urls]
+    items = sel.xpath('//div[@class="product-container"]')
+    for item in items:
+        product_link = item.xpath('./a/@href')
+        product_id = 0
+        if not product_link:
+            continue
+        product_link = product_link[0]
+        product_id = int(product_link[product_link.find('id-f_') + 5: -1])
+        product_link = base_url + product_link
+        if is_new_product(conn, cursor, product_id):
+            logger.info('scraping product:[%s] ...', product_link)
+            loop_enter = time.time()
+            product = get_url(conn, cursor, session, product_link, category_id, category2_id, category3_id)
+            loop_leave = time.time()
+            logger.info('scraping product:[%s] cost %2f sec ...', product_link, loop_leave - loop_enter)
+            put_status(conn, cursor, product_id, product['price'], product['status'])
+        else:
+            product_price = item.xpath('./span[@class="product-price"]/span/@data-usd')
+            product_status = 0
+            if product_price:
+                product_price = product_price[0]
+                product_price = [x for x in product_price if x.isdigit()]
+                product_price = int(''.join(product_price))
+            else:
+                product_price = 0
+                product_status = item.xpath('./span[@class="product-price"]/span/@data-hold')
+                if product_status:
+                    product_status = 1
+                else:
+                    product_status = 2
+            last_status = get_last_status(conn, cursor, product_id)
+            if last_status != product_status:
+                put_status(conn, cursor, product_id, product_price, product_status)
 
-    total_pages = sel.xpath('//ul[@class="pagination-list cf"]/@data-tp')[0]
-    total_pages = int(total_pages)
+def get_url(conn, cursor, session, link, category_id, category2_id, category3_id):
 
-    for i in range(2, total_pages + 1):
-        page_url = start_url + '?page=%d' % i
-        html = s.get(page_url)
-        sel = etree.HTML(html.text)
-        page_urls = sel.xpath('//a[@class="product-link"]/@href')
-        page_urls = [base_url + url for url in page_urls]
-        urls.extend(page_urls)
-
-    return urls
-
-def main():
-
-    urls = get_urls('https://www.1stdibs.com/furniture/storage-case-pieces/dry-bars/nouvelle-mirrored-bar/id-f_8676063/')
-
-def get_url(conn, cursor, link, category_id, category2_id, category3_id):
     item = {}
-    return item
 
-if __name__ == '__main__':
-    #main()
-    #session = r
-    # equests.session()
-    #get_url(session, 'https://www.1stdibs.com/furniture/lighting/chandeliers-pendant-lights/striking-tom-greene-brutalist-torch-cut-chandelier-feldman-lighting/id-f_7980733/')
+    html = session.get(link)
 
-    html = open('url2.html').read()
-
-    data = re.search('window.__SERVER_VARS__.data = (.*?);', html, re.S)
+    data = re.search('window.__SERVER_VARS__.data = (.*?);', html.text, re.S)
     data = data.group(1)
     data = json.loads(data)
 
-    detailLinks = re.search('window.__SERVER_VARS__.detailLinks = (.*?);', html, re.S)
+    detailLinks = re.search('window.__SERVER_VARS__.detailLinks = (.*?);', html.text, re.S)
     detailLinks = detailLinks.group(1)
     detailLinks = json.loads(detailLinks)
 
-    item = re.search('window.__SERVER_VARS__.item = (.*?);', html, re.S)
-    item = item.group(1)
-    item = json.loads(item)
+    # data_item = re.search('window.__SERVER_VARS__.item = (.*?);', html.text, re.S)
+    # data_item = data_item.group(1)
+    # data_item = json.loads(data_item)
 
     product_id = data['id']
     title = data['titleCondensed']
-    price = data['retailPrice']['USD']
-    status = 'Available'
+    price = data['retailPrice']['USD'] if data['retailPrice'] else 0
+    status = 0
     if data['isSold']:
-        status = 'SOLD'
-    elif data['isSuspended']:
-        status = 'HOLD'
+        status = 2
+    elif data['isHold']:
+        status = 1
 
-    print (product_id, title, price, status)
+    item['product_id'] = int(product_id)
+    item['title'] = title
+    item['price'] = int(price)
+    item['status'] = status
 
-    print(detailLinks)
     period_of = detailLinks.get('periodOf', {})
     period_of = ', '.join(period_of.keys())
 
     origin = detailLinks.get('placeOfOrigin', {})
-    if origin:
-        for k, v in origin.items():
-            origin = k
-            break
-    else:
-        origin = ''
+    origin = ', '.join(origin)
 
     period = detailLinks.get('period', {})
-    if period:
-        for k, v in period.items():
-            period = k
-            break
-    else:
-        period = ''
+    period = ', '.join(period)
 
-    creater = detailLinks.get('creator', {})
-    if creater:
-        for k, v in creater.items():
-            creater = k
-            break
-    else:
-        creater = ''
+    creator = detailLinks.get('creator', {})
+    creator = ', '.join(creator)
 
     material = detailLinks.get('materialsAndTechniques')
-    if material:
-        material = ', '.join(material.keys())
-    else:
-        material = ''
+    material = ', '.join(material)
 
     style_of = detailLinks.get('styleOf', {})
-    if style_of:
-        for k, v in style_of.items():
-            style_of = k
-            break
-    else:
-        style_of = ''
+    style_of = ', '.join(style_of)
 
-    print (period_of,style_of, origin, period, creater, material)
+    item['period_of'] = period_of
+    item['style_of'] = style_of
+    item['origin'] = origin
+    item['period'] = period
+    item['creator'] = creator
+    item['material'] = material
+
+    item['timestamp'] = datetime.now()
+
+    return item
+
+def put_product(conn, cursor, item):
+    sql = 'insert into product ' \
+          '(product_id, title, price, status, period_of, style_of, origin, period, material, creator, timestamp) ' \
+          'values (%d, "%s", %d, %d, "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % \
+                    (item['product_id'], item['title'], item['price'], item['status'],
+                     item['period_of'], item['style_of'], item['origin'], item['period'],
+                     item['material'], item['creator'], item['timestamp'])
+
+    cursor.execute(sql)
+    conn.commit()
+
+def put_status(conn, cursor, product_id, product_price, product_status):
+
+    logger.info('detect new status of product:[%d] ...', product_id)
+    sql = 'insert into status (product_id, price, status, timestamp)' \
+        'values (%d %d %d "%s")' % (product_id, product_price, product_status, datetime.now())
+    cursor.execute(sql)
+    conn.commit()
+
+def get_last_status(conn, cursor, product_id):
+
+    sql = 'select status from status where product_id=%d' % product_id
+    cursor.execute(sql)
+    status = cursor.fetchone()
+    if not status:
+        return -1
+
+    return status[0]
+
+def get_category3(conn, cursor):
+
+    sql = 'select parent_id, id, link from category3'
+    cursor.execute(sql)
+    return cursor.fetchall()
+
+def get_category(conn, cursor, link, category2_id, category3_id):
+
+    sql = 'select parent_id from category2 where id=%d' % category2_id
+    cursor.execute(sql)
+    category_id = cursor.fetchone()[0]
+
+    session = requests.session()
+
+    html = session.get(link, timeout=10)
+    sel = etree.HTML(html.text)
+    total_pages = sel.xpath('//ul[@class="pagination-list cf"]/@data-tp')[0]
+    total_pages = int(total_pages)
+
+    logger.info('there are %d pages of this category to scrape', total_pages)
+    get_page(conn, cursor, session, link, category_id, category2_id, category3_id)
+
+    for i in range(total_pages + 1):
+        page_url = link + '?page=%d' % i
+        logger.info('scraping page:[%s] ...' % page_url)
+        loop_enter = time.time()
+        get_page(conn, cursor, session, page_url, category_id, category2_id, category3_id)
+        loop_leave = time.time()
+        logger.info('scraping page:[%s] cost %2f sec ...' % (page_url, loop_leave - loop_enter))
+
+    session.close()
+
+def main():
+
+    logger.info('Connect MySQL via root:123456@localhost')
+    logger.info('scraping all categories ...')
+    enter = time.time()
+
+    conn = pymysql.connect(host = '127.0.0.1', user = 'root', password = '123456',
+                    db = '1stdibs', charset = 'utf8')
+    cursor = conn.cursor()
+
+    items = get_category3(conn, cursor)
+    for item in items:
+        logger.info('scraping category:[%s] ...', item[2])
+        loop_enter = time.time()
+        get_category(conn, cursor, item[2], item[0], item[1])
+        loop_leave = time.time()
+        logger.info('scraping category:[%s] cost %2f sec', item[2], loop_leave - loop_enter)
+
+    conn.close()
+
+    leave = time.time()
+    logger.info('scraping all categories done, cost %2f sec', leave - enter)
+
+if __name__ == '__main__':
+    main()
