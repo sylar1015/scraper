@@ -48,7 +48,8 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
             loop_leave = time.time()
             logger.info('scraping product:[%s] cost %2f sec ...', product_link, loop_leave - loop_enter)
             put_product(conn, cursor, product)
-            put_status(conn, cursor, product_id, product['price'], product['status'])
+            put_status(conn, cursor, product_id, product['price'], product['status'],
+                       category_id, category2_id, category3_id)
         else:
             product_price = item.xpath('./span[@class="product-price"]/span/@data-usd')
             product_status = 0
@@ -65,7 +66,8 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
                     product_status = 2
             last_status = get_last_status(conn, cursor, product_id)
             if last_status != product_status:
-                put_status(conn, cursor, product_id, product_price, product_status)
+                put_status(conn, cursor, product_id, product_price, product_status,
+                           category_id, category2_id, category3_id)
 
 def get_url(conn, cursor, session, link, category_id, category2_id, category3_id):
 
@@ -73,11 +75,11 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
 
     html = session.get(link)
 
-    data = re.search('window.__SERVER_VARS__.data = (.*?);', html.text, re.S)
+    data = re.search('window.__SERVER_VARS__.data = (.*?\\});', html.text, re.S)
     data = data.group(1)
     data = json.loads(data)
 
-    detailLinks = re.search('window.__SERVER_VARS__.detailLinks = (.*?);', html.text, re.S)
+    detailLinks = re.search('window.__SERVER_VARS__.detailLinks = (.*?\\});', html.text, re.S)
     detailLinks = detailLinks.group(1)
     detailLinks = json.loads(detailLinks)
 
@@ -125,26 +127,34 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     item['material'] = material
 
     item['timestamp'] = datetime.now().strftime('%Y-%m-%d')
+    item['category_id'] = category_id
+    item['category2_id'] = category2_id
+    item['category3_id'] = category3_id
 
     return item
 
 def put_product(conn, cursor, item):
     sql = 'insert into product ' \
-          '(product_id, title, price, status, period_of, style_of, origin, period, material, creator, timestamp) ' \
-          'values (%d, "%s", %d, %d, "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % \
+          '(product_id, title, price, status, period_of, style_of, origin, period, material, creator, \
+          timestamp, category_id, category2_id, category3_id) ' \
+          'values (%d, "%s", %d, %d, "%s", "%s", "%s", "%s", "%s", "%s", "%s", %d, %d, %d)' % \
                     (item['product_id'], item['title'], item['price'], item['status'],
                      item['period_of'], item['style_of'], item['origin'], item['period'],
-                     item['material'], item['creator'], item['timestamp'])
+                     item['material'], item['creator'], item['timestamp'],
+                     item['category_id'], item['category2_id'], item['category3_id'])
 
     print(sql)
     cursor.execute(sql)
     conn.commit()
 
-def put_status(conn, cursor, product_id, product_price, product_status):
+def put_status(conn, cursor, product_id, product_price, product_status,
+               category_id, category2_id, category3_id):
 
     logger.info('detect new status of product:[%d] ...', product_id)
-    sql = 'insert into status (product_id, price, status, timestamp) ' \
-        'values (%d, %d, %d, "%s")' % (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d'))
+    sql = 'insert into status (product_id, price, status, timestamp, category_id, category2_id, category3_id) ' \
+        'values (%d, %d, %d, "%s")' % \
+        (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d'),
+         category_id, category2_id, category3_id)
     cursor.execute(sql)
     conn.commit()
 
@@ -213,5 +223,18 @@ def main():
     leave = time.time()
     logger.info('scraping all categories done, cost %2f sec', leave - enter)
 
+def test_get_url(start_url):
+    conn = pymysql.connect(host = '127.0.0.1', user = 'root', password = '123456',
+                    db = '1stdibs', charset = 'utf8')
+    cursor = conn.cursor()
+
+    session = requests.session()
+    item = get_url(conn, cursor, session, start_url, 1, 1, 1)
+    print(item)
+
+    cursor.close()
+    conn.close()
+
 if __name__ == '__main__':
     main()
+    #test_get_url('https://www.1stdibs.com/furniture/lighting/chandeliers-pendant-lights/anton-fogh-holm-alfred-j-andersen-enameled-steel-double-pendant-light/id-f_8201523/')
