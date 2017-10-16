@@ -152,7 +152,7 @@ def put_status(conn, cursor, product_id, product_price, product_status,
 
     logger.info('detect new status of product:[%d] ...', product_id)
     sql = 'insert into status (product_id, price, status, timestamp, category_id, category2_id, category3_id) ' \
-        'values (%d, %d, %d, "%s")' % \
+        'values (%d, %d, %d, "%s", %d, %d, %d)' % \
         (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d'),
          category_id, category2_id, category3_id)
     cursor.execute(sql)
