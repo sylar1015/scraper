@@ -60,11 +60,15 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
                 product_price = int(''.join(product_price))
             else:
                 product_price = 0
-                product_status = item.xpath('./span[@class="product-price"]/span/@data-hold')
-                if product_status:
-                    product_status = 1
+                if item.xpath('./span[@class="product-price"]/span/@data-hide-price'):
+                    #hide price, consider on sale
+                    pass
                 else:
-                    product_status = 2
+                    product_status = item.xpath('./span[@class="product-price"]/span/@data-hold')
+                    if product_status:
+                        product_status = 1
+                    else:
+                        product_status = 2
             last_status = get_last_status(conn, cursor, product_id)
             if last_status != product_status:
                 put_status(conn, cursor, product_id, product_price, product_status,
