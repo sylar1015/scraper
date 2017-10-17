@@ -10,6 +10,7 @@ import sys
 import pymysql
 import json
 from datetime import datetime
+from optparse import OptionParser
 
 logger = logging.getLogger('SCRAPING-1STDLIBS')
 fmt = '[%(name)s][%(levelname)s]:%(message)s'
@@ -126,7 +127,7 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     item['creator'] = creator
     item['material'] = material
 
-    item['timestamp'] = datetime.now().strftime('%Y-%m-%d')
+    item['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     item['category_id'] = category_id
     item['category2_id'] = category2_id
     item['category3_id'] = category3_id
@@ -143,7 +144,6 @@ def put_product(conn, cursor, item):
                      item['material'], item['creator'], item['timestamp'],
                      item['category_id'], item['category2_id'], item['category3_id'])
 
-    print(sql)
     cursor.execute(sql)
     conn.commit()
 
@@ -153,14 +153,14 @@ def put_status(conn, cursor, product_id, product_price, product_status,
     logger.info('detect new status of product:[%d] ...', product_id)
     sql = 'insert into status (product_id, price, status, timestamp, category_id, category2_id, category3_id) ' \
         'values (%d, %d, %d, "%s", %d, %d, %d)' % \
-        (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d'),
+        (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
          category_id, category2_id, category3_id)
     cursor.execute(sql)
     conn.commit()
 
 def get_last_status(conn, cursor, product_id):
 
-    sql = 'select status from status where product_id=%d' % product_id
+    sql = 'select status from status where product_id=%d order by id desc' % product_id
     cursor.execute(sql)
     status = cursor.fetchone()
     if not status:
@@ -200,28 +200,51 @@ def get_category(conn, cursor, link, category2_id, category3_id):
 
     session.close()
 
-def main():
+def main(loop_forever = False):
+
+    usage = 'myprog -c <category3 id range>\nfor example: ./1stdibs.py -c 1,2\nthis is to scrape/monitor level-3 category range(1,2)'
+    parser = OptionParser(usage)
+    parser.add_option('-c', '--category', type='string', dest='category')
+    options, args = parser.parse_args(sys.argv)
+    if not options.category:
+        parser.print_usage()
+        return
+
+    category_min = int(options.category.split(',') [0])
+    category_max = int(options.category.split(',') [1])
 
     logger.info('Connect MySQL via root:123456@localhost')
-    logger.info('scraping all categories ...')
-    enter = time.time()
 
     conn = pymysql.connect(host = '127.0.0.1', user = 'root', password = '123456',
                     db = '1stdibs', charset = 'utf8')
     cursor = conn.cursor()
 
-    items = get_category3(conn, cursor)
-    for item in items:
-        logger.info('scraping category:[%s] ...', item[2])
-        loop_enter = time.time()
-        get_category(conn, cursor, item[2], item[0], item[1])
-        loop_leave = time.time()
-        logger.info('scraping category:[%s] cost %2f sec', item[2], loop_leave - loop_enter)
+    while True:    
 
+        logger.info('scraping all categories ...')
+        enter = time.time()
+        items = get_category3(conn, cursor)
+
+        for item in items:
+            category3_id = item[1]
+            if category3_id > category_max or category3_id <  category_min:
+                continue;
+            logger.info('scraping category:[%s] ...', item[2])
+            loop_enter = time.time()
+            get_category(conn, cursor, item[2], item[0], item[1])
+            loop_leave = time.time()
+            logger.info('scraping category:[%s] cost %2f sec', item[2], loop_leave - loop_enter)
+        
+        leave = time.time()
+        logger.info('scraping all categories done, cost %2f sec', leave - enter)
+
+        if loop_forever:
+            continue
+        else:
+            break        
+
+    cursor.close()
     conn.close()
-
-    leave = time.time()
-    logger.info('scraping all categories done, cost %2f sec', leave - enter)
 
 def test_get_url(start_url):
     conn = pymysql.connect(host = '127.0.0.1', user = 'root', password = '123456',
@@ -231,9 +254,10 @@ def test_get_url(start_url):
     session = requests.session()
     item = get_url(conn, cursor, session, start_url, 1, 1, 1)
     print(item)
-
     cursor.close()
     conn.close()
+
+
 
 if __name__ == '__main__':
     main()
