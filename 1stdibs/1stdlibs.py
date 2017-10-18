@@ -98,6 +98,7 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
 
     product_id = data['id']
     title = data['titleCondensed'].replace('"','')
+    title = title.replace("'",'')
     price = data['retailPrice']['USD'] if data['retailPrice'] else 0
     status = 0
     if data['isSold']:
@@ -121,6 +122,7 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
 
     creator = detailLinks.get('creator', {})
     creator = ', '.join(creator)
+    creator = creator.replace('"', '')
 
     material = detailLinks.get('materialsAndTechniques', {})
     material = ', '.join(material)
@@ -151,7 +153,6 @@ def put_product(conn, cursor, item):
                      item['period_of'], item['style_of'], item['origin'], item['period'],
                      item['material'], item['creator'], item['timestamp'],
                      item['category_id'], item['category2_id'], item['category3_id'])
-
     cursor.execute(sql)
     conn.commit()
 
@@ -264,6 +265,7 @@ def test_get_url(start_url):
 
     session = requests.session()
     item = get_url(conn, cursor, session, start_url, 1, 1, 1)
+    put_product(conn, cursor, item)
     print(item)
     cursor.close()
     conn.close()
@@ -272,4 +274,4 @@ def test_get_url(start_url):
 
 if __name__ == '__main__':
     main()
-    #test_get_url('https://www.1stdibs.com/furniture/lighting/chandeliers-pendant-lights/anton-fogh-holm-alfred-j-andersen-enameled-steel-double-pendant-light/id-f_8201523/')
+    #test_get_url('https://www.1stdibs.com/furniture/wall-decorations/paintings/paul-stauffenegger-called-stauffi-switzerland-1925-2016-dated-1972/id-f_6923723/')
