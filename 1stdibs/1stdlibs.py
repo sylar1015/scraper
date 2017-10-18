@@ -192,13 +192,16 @@ def get_category(conn, cursor, link, category2_id, category3_id):
 
     html = session.get(link)
     sel = etree.HTML(html.text)
-    total_pages = sel.xpath('//ul[@class="pagination-list cf"]/@data-tp')[0]
-    total_pages = int(total_pages)
+    total_pages = sel.xpath('//ul[@class="pagination-list cf"]/@data-tp')
+    if total_pages:
+        total_pages = int(total_pages[0])
+    else:
+        total_pages = 1
 
     logger.info('there are %d pages of this category to scrape', total_pages)
     get_page(conn, cursor, session, link, category_id, category2_id, category3_id)
 
-    for i in range(total_pages + 1):
+    for i in range(2, total_pages + 1):
         page_url = link + '?page=%d' % i
         logger.info('scraping page:[%s] ...' % page_url)
         loop_enter = time.time()
