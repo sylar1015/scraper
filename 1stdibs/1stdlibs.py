@@ -85,8 +85,12 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     data = json.loads(data)
 
     detailLinks = re.search('window.__SERVER_VARS__.detailLinks = (.*?\\});', html.text, re.S)
+    
     detailLinks = detailLinks.group(1)
-    detailLinks = json.loads(detailLinks)
+    try:
+        detailLinks = json.loads(detailLinks)
+    except Exception as e:
+        detailLinks = {}
 
     # data_item = re.search('window.__SERVER_VARS__.item = (.*?);', html.text, re.S)
     # data_item = data_item.group(1)
