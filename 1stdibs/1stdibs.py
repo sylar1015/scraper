@@ -48,11 +48,11 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
             product = get_url(conn, cursor, session, product_link, category_id, category2_id, category3_id)
             loop_leave = time.time()
             logger.info('scraping product:[%s] cost %2f sec ...', product_link, loop_leave - loop_enter)
-            if put_product(conn, cursor, product)
+            if put_product(conn, cursor, product):
                 put_status(conn, cursor, product_id, product['price'], product['status'],
                        category_id, category2_id, category3_id)
         else:
-            product_price = item.xpath('./span[@class="product-price"]/span/@data-usd')
+            product_price = item.xpath('./span[contains(@class, "product-price")]/span/@data-usd')
             product_status = 0
             if product_price:
                 product_price = product_price[0]
@@ -60,11 +60,11 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
                 product_price = int(''.join(product_price))
             else:
                 product_price = 0
-                if item.xpath('./span[@class="product-price"]/span/@data-hide-price'):
+                if item.xpath('./span[contains(@class, "product-price")]/span/@data-hide-price'):
                     #hide price, consider on sale
                     pass
                 else:
-                    product_status = item.xpath('./span[@class="product-price"]/span/@data-hold')
+                    product_status = item.xpath('./span[contains(@class, "product-price")]/span/@data-hold')
                     if product_status:
                         product_status = 1
                     else:
@@ -274,7 +274,8 @@ def test_get_url(start_url):
 
     session = requests.session()
     item = get_url(conn, cursor, session, start_url, 1, 1, 1)
-    put_product(conn, cursor, item)
+    if put_product(conn, cursor, item):
+        put_status(conn, curosr, item['product_id'], item['price'], item['status'])
     print(item)
     cursor.close()
     conn.close()
