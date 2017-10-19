@@ -99,6 +99,7 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     product_id = data['id']
     title = data['titleCondensed'].replace('"','')
     title = title.replace("'",'')
+    title = title.replace("\\",'')
     price = data['retailPrice']['USD'] if data['retailPrice'] else 0
     status = 0
     if data['isSold']:
@@ -119,10 +120,13 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
 
     period = detailLinks.get('period', {})
     period = ', '.join(period)
+    period = period.replace('"', '')
+    period = period.replace("'", '')
 
     creator = detailLinks.get('creator', {})
     creator = ', '.join(creator)
     creator = creator.replace('"', '')
+    creator = creator.replace("'", '')
 
     material = detailLinks.get('materialsAndTechniques', {})
     material = ', '.join(material)
@@ -274,4 +278,4 @@ def test_get_url(start_url):
 
 if __name__ == '__main__':
     main()
-    #test_get_url('https://www.1stdibs.com/furniture/wall-decorations/paintings/paul-stauffenegger-called-stauffi-switzerland-1925-2016-dated-1972/id-f_6923723/')
+    #test_get_url('https://www.1stdibs.com/furniture/wall-decorations/paintings/still-life-hyacinths-blue-white-vase/id-f_593252/')
