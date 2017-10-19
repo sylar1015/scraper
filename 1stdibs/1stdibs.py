@@ -157,7 +157,11 @@ def put_product(conn, cursor, item):
                      item['period_of'], item['style_of'], item['origin'], item['period'],
                      item['material'], item['creator'], item['timestamp'],
                      item['category_id'], item['category2_id'], item['category3_id'])
-    cursor.execute(sql)
+    try:
+        cursor.execute(sql)
+    except Exception as e:
+        logger.error(e)
+        return
     conn.commit()
 
 def put_status(conn, cursor, product_id, product_price, product_status,
