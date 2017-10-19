@@ -48,8 +48,8 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
             product = get_url(conn, cursor, session, product_link, category_id, category2_id, category3_id)
             loop_leave = time.time()
             logger.info('scraping product:[%s] cost %2f sec ...', product_link, loop_leave - loop_enter)
-            put_product(conn, cursor, product)
-            put_status(conn, cursor, product_id, product['price'], product['status'],
+            if put_product(conn, cursor, product)
+                put_status(conn, cursor, product_id, product['price'], product['status'],
                        category_id, category2_id, category3_id)
         else:
             product_price = item.xpath('./span[@class="product-price"]/span/@data-usd')
@@ -161,8 +161,9 @@ def put_product(conn, cursor, item):
         cursor.execute(sql)
     except Exception as e:
         logger.error(e)
-        return
+        return False
     conn.commit()
+    return True
 
 def put_status(conn, cursor, product_id, product_price, product_status,
                category_id, category2_id, category3_id):
