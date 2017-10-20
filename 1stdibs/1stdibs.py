@@ -81,6 +81,8 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     html = session.get(link)
 
     data = re.search('window.__SERVER_VARS__.data = (.*?\\});', html.text, re.S)
+    if not data:
+        return item
     data = data.group(1)
     data = json.loads(data)
 
@@ -275,7 +277,7 @@ def test_get_url(start_url):
     session = requests.session()
     item = get_url(conn, cursor, session, start_url, 1, 1, 1)
     if put_product(conn, cursor, item):
-        put_status(conn, curosr, item['product_id'], item['price'], item['status'])
+        put_status(conn, cursor, item['product_id'], item['price'], item['status'])
     print(item)
     cursor.close()
     conn.close()
@@ -284,4 +286,4 @@ def test_get_url(start_url):
 
 if __name__ == '__main__':
     main()
-    #test_get_url('https://www.1stdibs.com/furniture/wall-decorations/paintings/still-life-hyacinths-blue-white-vase/id-f_593252/')
+    #test_get_url('https://www.1stdibs.com/furniture/tables/side-tables/occasional-painted-table/id-f_121960/')
