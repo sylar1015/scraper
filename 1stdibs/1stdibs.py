@@ -42,6 +42,8 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
         product_link = product_link[0]
         product_id = int(product_link[product_link.find('id-f_') + 5: -1])
         product_link = base_url + product_link
+        product_image = item.xpath('./a/div/img/@src')
+        product_image = product_item[0] if product_image else ''
         if is_new_product(conn, cursor, product_id):
             logger.info('scraping product:[%s] ...', product_link)
             loop_enter = time.time()
@@ -53,7 +55,7 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
                 logger.error('parse product(%s) failed this time, try next time ...', product_id)
                 continue
             if put_product(conn, cursor, product):
-                put_status(conn, cursor, product_id, product['price'], product['status'],
+                put_status(conn, cursor, product_id, product['price'], product['status'], product_link, product_image,
                        category_id, category2_id, category3_id)
         else:
             product_price = item.xpath('./span[contains(@class, "product-price")]/span/@data-usd')
@@ -75,7 +77,7 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
                         product_status = 2
             last_status = get_last_status(conn, cursor, product_id)
             if last_status != product_status:
-                put_status(conn, cursor, product_id, product_price, product_status,
+                put_status(conn, cursor, product_id, product_price, product_status, product_link, product_image,
                            category_id, category2_id, category3_id)
 
 def get_url(conn, cursor, session, link, category_id, category2_id, category3_id):
@@ -171,13 +173,14 @@ def put_product(conn, cursor, item):
     conn.commit()
     return True
 
-def put_status(conn, cursor, product_id, product_price, product_status,
+def put_status(conn, cursor, product_id, product_price, product_status, product_link, product_image,
                category_id, category2_id, category3_id):
 
     logger.info('detect new status of product:[%d] ...', product_id)
-    sql = 'insert into status (product_id, price, status, timestamp, category_id, category2_id, category3_id) ' \
+    sql = 'insert into status (product_id, price, status, timestamp, link, image, category_id, category2_id, category3_id) ' \
         'values (%d, %d, %d, "%s", %d, %d, %d)' % \
         (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+         product_link, product_image,
          category_id, category2_id, category3_id)
     try:
         cursor.execute(sql)
