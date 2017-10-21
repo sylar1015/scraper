@@ -44,6 +44,8 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
         product_link = base_url + product_link
         product_image = item.xpath('./a/div/img/@src')
         product_image = product_image[0] if product_image else ''
+        if product_image.endswith('.gif'):
+            product_image = item.xpath('./a/div/noscript/img/@src')[0]
         if is_new_product(conn, cursor, product_id):
             logger.info('scraping product:[%s] ...', product_link)
             loop_enter = time.time()
