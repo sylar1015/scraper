@@ -43,7 +43,7 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
         product_id = int(product_link[product_link.find('id-f_') + 5: -1])
         product_link = base_url + product_link
         product_image = item.xpath('./a/div/img/@src')
-        product_image = product_item[0] if product_image else ''
+        product_image = product_image[0] if product_image else ''
         if is_new_product(conn, cursor, product_id):
             logger.info('scraping product:[%s] ...', product_link)
             loop_enter = time.time()
@@ -178,7 +178,7 @@ def put_status(conn, cursor, product_id, product_price, product_status, product_
 
     logger.info('detect new status of product:[%d] ...', product_id)
     sql = 'insert into status (product_id, price, status, timestamp, link, image, category_id, category2_id, category3_id) ' \
-        'values (%d, %d, %d, "%s", %d, %d, %d)' % \
+        'values (%d, %d, %d, "%s", "%s", "%s" ,%d, %d, %d)' % \
         (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
          product_link, product_image,
          category_id, category2_id, category3_id)
