@@ -48,6 +48,10 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
             product = get_url(conn, cursor, session, product_link, category_id, category2_id, category3_id)
             loop_leave = time.time()
             logger.info('scraping product:[%s] cost %2f sec ...', product_link, loop_leave - loop_enter)
+            #add exception handler
+            if not product:
+                logger.error('parse product(%s) failed this time, try next time ...', product_id)
+                continue
             if put_product(conn, cursor, product):
                 put_status(conn, cursor, product_id, product['price'], product['status'],
                        category_id, category2_id, category3_id)
