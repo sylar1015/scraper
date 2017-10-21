@@ -161,7 +161,7 @@ def put_product(conn, cursor, item):
                      item['category_id'], item['category2_id'], item['category3_id'])
     try:
         cursor.execute(sql)
-    except Exception as e:
+    except pymysql.err.IntegrityError as e:
         logger.error(e)
         return False
     conn.commit()
@@ -175,7 +175,10 @@ def put_status(conn, cursor, product_id, product_price, product_status,
         'values (%d, %d, %d, "%s", %d, %d, %d)' % \
         (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
          category_id, category2_id, category3_id)
-    cursor.execute(sql)
+    try:
+        cursor.execute(sql)
+    except pymysql.err.IntegrityError as e:
+        return
     conn.commit()
 
 def get_last_status(conn, cursor, product_id):
