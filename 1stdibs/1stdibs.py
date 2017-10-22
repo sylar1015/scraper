@@ -17,7 +17,7 @@ fmt = '[%(name)s][%(levelname)s]:%(message)s'
 h = logging.StreamHandler(sys.stdout)
 h.setFormatter(logging.Formatter(fmt))
 logger.addHandler(h)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARN)
 
 def is_new_product(conn, cursor, product_id):
     sql = 'select * from product where product_id=%d' % product_id
@@ -262,7 +262,7 @@ def main(loop_forever = False):
     category_min = int(options.category.split(',') [0])
     category_max = int(options.category.split(',') [1])
 
-    logger.info('Connect MySQL via root:123456@localhost')
+    logger.warning('Connect MySQL via root:123456@localhost')
 
     conn = pymysql.connect(host = '127.0.0.1', user = 'root', password = '123456',
                     db = '1stdibs', charset = 'utf8')
