@@ -82,6 +82,9 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
                 put_status(conn, cursor, product_id, product_price, product_status, product_link, product_image,
                            category_id, category2_id, category3_id)
 
+            if (product_price > 0)
+                update_product(conn, cursor, product_id, product_price)
+
 def get_url(conn, cursor, session, link, category_id, category2_id, category3_id):
 
     item = {}
@@ -174,6 +177,17 @@ def put_product(conn, cursor, item):
         return False
     conn.commit()
     return True
+
+def update_product(conn, cursor, product_id, price):
+    sql = 'update product set price=%d where product_id=%d' % (product_id, price)
+
+    try:
+        cursor.execute(sql)
+    except pymysql.err.IntegrityError as e:
+        logger.error(e)
+        return
+
+    conn.commit()
 
 def put_status(conn, cursor, product_id, product_price, product_status, product_link, product_image,
                category_id, category2_id, category3_id):
@@ -297,5 +311,5 @@ def test_get_url(start_url):
 
 
 if __name__ == '__main__':
-    main()
+    main(True)
     #test_get_url('https://www.1stdibs.com/furniture/tables/side-tables/occasional-painted-table/id-f_121960/')
