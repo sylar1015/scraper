@@ -82,7 +82,7 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
                 put_status(conn, cursor, product_id, product_price, product_status, product_link, product_image,
                            category_id, category2_id, category3_id)
 
-            if (product_price > 0)
+            if (product_price > 0):
                 update_product(conn, cursor, product_id, product_price)
 
 def get_url(conn, cursor, session, link, category_id, category2_id, category3_id):
