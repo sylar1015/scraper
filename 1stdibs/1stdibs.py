@@ -105,6 +105,19 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     except Exception as e:
         detailLinks = {}
 
+    #dealer
+    carousel = re.search('window.__SERVER_VARS__.carousel = (.*?\\});', html.text, re.S)
+
+    carousel = carousel.group(1)
+    carousel = json.loads(carousel)
+    dealer = carousel['items'][2]['seller']['company']
+    dealer_location = carousel['items'][2]['seller']['address']
+    dealer_link = 'https://www.1stdibs.com' + carousel['items'][2]['seller']['uri']
+
+    item['dealer'] = dealer
+    item['dealer_location'] = dealer_location
+    item['dealer_link'] = dealer_link
+
     # data_item = re.search('window.__SERVER_VARS__.item = (.*?);', html.text, re.S)
     # data_item = data_item.group(1)
     # data_item = json.loads(data_item)
@@ -164,12 +177,13 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
 def put_product(conn, cursor, item):
     sql = 'insert into product ' \
           '(product_id, title, price, status, period_of, style_of, origin, period, material, creator, \
-          timestamp, category_id, category2_id, category3_id) ' \
-          'values (%d, "%s", %d, %d, "%s", "%s", "%s", "%s", "%s", "%s", "%s", %d, %d, %d)' % \
+          timestamp, category_id, category2_id, category3_id, dealer, dealer_location, dealer_link) ' \
+          'values (%d, "%s", %d, %d, "%s", "%s", "%s", "%s", "%s", "%s", "%s", %d, %d, %d, "%s", "%s", "%s")' % \
                     (item['product_id'], item['title'], item['price'], item['status'],
                      item['period_of'], item['style_of'], item['origin'], item['period'],
                      item['material'], item['creator'], item['timestamp'],
-                     item['category_id'], item['category2_id'], item['category3_id'])
+                     item['category_id'], item['category2_id'], item['category3_id'],
+                     item['dealer'], item['dealer_location'], item['dealer_link'])
     try:
         cursor.execute(sql)
     except pymysql.err.IntegrityError as e:
@@ -302,8 +316,8 @@ def test_get_url(start_url):
 
     session = requests.session()
     item = get_url(conn, cursor, session, start_url, 1, 1, 1)
-    if put_product(conn, cursor, item):
-        put_status(conn, cursor, item['product_id'], item['price'], item['status'])
+    #if put_product(conn, cursor, item):
+    #    put_status(conn, cursor, item['product_id'], item['price'], item['status'])
     print(item)
     cursor.close()
     conn.close()
@@ -312,4 +326,4 @@ def test_get_url(start_url):
 
 if __name__ == '__main__':
     main(True)
-    #test_get_url('https://www.1stdibs.com/furniture/tables/side-tables/occasional-painted-table/id-f_121960/')
+    #test_get_url('https://www.1stdibs.com/furniture/seating/stools/set-of-tall-chrome-stools/id-f_8778993/')
