@@ -118,6 +118,7 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
             dealer = x['seller']['company']
             dealer_location = x['seller']['address']
             dealer_link = 'https://www.1stdibs.com' + x['seller']['uri']
+            break
 
     item['dealer'] = dealer
     item['dealer_location'] = dealer_location
