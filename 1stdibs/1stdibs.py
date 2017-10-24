@@ -284,7 +284,7 @@ def main(loop_forever = False):
 
     while True:    
 
-        logger.info('scraping all categories ...')
+        logger.warning('scraping all categories ...')
         enter = time.time()
         items = get_category3(conn, cursor)
 
@@ -299,7 +299,7 @@ def main(loop_forever = False):
             logger.info('scraping category:[%s] cost %2f sec', item[2], loop_leave - loop_enter)
         
         leave = time.time()
-        logger.info('scraping all categories done, cost %2f sec', leave - enter)
+        logger.warning('scraping all categories done, cost %2f sec', leave - enter)
 
         if loop_forever:
             continue
