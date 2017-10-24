@@ -110,9 +110,14 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
 
     carousel = carousel.group(1)
     carousel = json.loads(carousel)
-    dealer = carousel['items'][2]['seller']['company']
-    dealer_location = carousel['items'][2]['seller']['address']
-    dealer_link = 'https://www.1stdibs.com' + carousel['items'][2]['seller']['uri']
+    dealer = ''
+    dealer_location = ''
+    dealer_link = ''
+    for x in carousel['items']:
+        if x.get('seller', None):
+            dealer = x['seller']['company']
+            dealer_location = x['seller']['address']
+            dealer_link = 'https://www.1stdibs.com' + x['seller']['uri']
 
     item['dealer'] = dealer
     item['dealer_location'] = dealer_location
@@ -326,4 +331,4 @@ def test_get_url(start_url):
 
 if __name__ == '__main__':
     main(True)
-    #test_get_url('https://www.1stdibs.com/furniture/seating/stools/set-of-tall-chrome-stools/id-f_8778993/')
+    #test_get_url('https://www.1stdibs.com/furniture/lighting/chandeliers-pendant-lights/tiffany-pendel-lamp-indiana-certificate/id-f_8778193/')
