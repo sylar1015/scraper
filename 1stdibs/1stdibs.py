@@ -211,7 +211,7 @@ def put_product(conn, cursor, item):
     sql = 'insert into product ' \
           '(product_id, title, price, status, period_of, style_of, origin, period, material, creator, \
           timestamp, category_id, category2_id, category3_id, dealer, dealer_location, dealer_link, \
-            date_of_manufacture, condition, wear, number_of_items, dimensions, shipping, return_policy, \
+            date_of_manufacture, `condition`, wear, number_of_items, dimensions, shipping, return_policy, \
             seller_since, typical_response_time) ' \
           'values (%d, "%s", %d, %d, "%s", "%s", "%s", "%s", "%s", "%s", "%s", %d, %d, %d, "%s", "%s", "%s", \
                     "%s", "%s", "%s", %d, "%s", "%s", "%s", "%s", "%s")' % \
@@ -221,8 +221,9 @@ def put_product(conn, cursor, item):
                      item['category_id'], item['category2_id'], item['category3_id'],
                      item['dealer'], item['dealer_location'], item['dealer_link'],
                      item['date_of_manufacture'], item['condition'], item['wear'], item['number_of_items'],
-                     item['dimensions'], item['shipping'], item['return_policy'], item['seller_since'],
+                     item['dimension'], item['shipping'], item['return_policy'], item['seller_since'],
                      item['typical_response_time'])
+
     try:
         cursor.execute(sql)
     except pymysql.err.IntegrityError as e:
@@ -355,7 +356,7 @@ def test_get_url(start_url):
 
     session = requests.session()
     item = get_url(conn, cursor, session, start_url, 1, 1, 1)
-    #if put_product(conn, cursor, item):
+    put_product(conn, cursor, item)
     #    put_status(conn, cursor, item['product_id'], item['price'], item['status'])
     print(item)
     cursor.close()
@@ -364,5 +365,5 @@ def test_get_url(start_url):
 
 
 if __name__ == '__main__':
-    main(True)
+    main()
     #test_get_url('https://www.1stdibs.com/furniture/seating/stools/set-of-five-contemporary-modern-industrial-style-bar-stools/id-f_8844993/')
