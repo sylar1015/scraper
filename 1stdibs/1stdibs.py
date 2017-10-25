@@ -105,6 +105,9 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     except Exception as e:
         detailLinks = {}
 
+    returnscopy = re.search('window.__SERVER_VARS__.returnsCopy = (.*?\\});', html.text, re.S)
+    returnscopy = returnscopy.group(1)
+    returnscopy = json.loads(returnscopy)
     #dealer
     carousel = re.search('window.__SERVER_VARS__.carousel = (.*?\\});', html.text, re.S)
 
@@ -124,9 +127,9 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     item['dealer_location'] = dealer_location
     item['dealer_link'] = dealer_link
 
-    # data_item = re.search('window.__SERVER_VARS__.item = (.*?);', html.text, re.S)
-    # data_item = data_item.group(1)
-    # data_item = json.loads(data_item)
+    data_item = re.search('window.__SERVER_VARS__.item = (.*?\\});', html.text, re.S)
+    data_item = data_item.group(1)
+    data_item = json.loads(data_item)
 
     product_id = data['id']
     title = data['titleCondensed'].replace('"','')
@@ -166,6 +169,30 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     style_of = detailLinks.get('styleOf', {})
     style_of = ', '.join(style_of)
 
+    #new field
+    shipping = data.get('shippingCopy', {}).get('pdpShippingDescriptionNoQuotes', {}).get('value', '')
+    number_of_items = data_item.get('num_item', 0)
+    condition = data_item.get('condition', '')
+    wear = data_item.get('wear', '')
+    date_of_manufacture = data_item.get('creation_date', '')
+    dimension = data_item.get('measurements', {})
+    dimension = 'height:%s, width:%s, depth:%s' % \
+                (dimension.get('height', ''), dimension.get('width', ''), dimension.get('depth', ''))
+    
+    return_policy = returnscopy.get('cannotBeReturned', '')
+    seller_since = data_item.get('dealer', {}).get('since_year', '')
+    typical_response_time = data.get('sellerResponseTime', '')
+    
+    item['shipping'] = shipping
+    item['number_of_items'] = number_of_items
+    item['condition'] = condition
+    item['wear'] = wear
+    item['date_of_manufacture'] = date_of_manufacture
+    item['dimension'] = dimension
+    item['return_policy'] = return_policy
+    item['seller_since'] = seller_since
+    item['typical_response_time'] = typical_response_time
+
     item['period_of'] = period_of
     item['style_of'] = style_of
     item['origin'] = origin
@@ -183,13 +210,19 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
 def put_product(conn, cursor, item):
     sql = 'insert into product ' \
           '(product_id, title, price, status, period_of, style_of, origin, period, material, creator, \
-          timestamp, category_id, category2_id, category3_id, dealer, dealer_location, dealer_link) ' \
-          'values (%d, "%s", %d, %d, "%s", "%s", "%s", "%s", "%s", "%s", "%s", %d, %d, %d, "%s", "%s", "%s")' % \
+          timestamp, category_id, category2_id, category3_id, dealer, dealer_location, dealer_link, \
+            date_of_manufacture, condition, wear, number_of_items, dimensions, shipping, return_policy, \
+            seller_since, typical_response_time) ' \
+          'values (%d, "%s", %d, %d, "%s", "%s", "%s", "%s", "%s", "%s", "%s", %d, %d, %d, "%s", "%s", "%s", \
+                    "%s", "%s", "%s", %d, "%s", "%s", "%s", "%s", "%s")' % \
                     (item['product_id'], item['title'], item['price'], item['status'],
                      item['period_of'], item['style_of'], item['origin'], item['period'],
                      item['material'], item['creator'], item['timestamp'],
                      item['category_id'], item['category2_id'], item['category3_id'],
-                     item['dealer'], item['dealer_location'], item['dealer_link'])
+                     item['dealer'], item['dealer_location'], item['dealer_link'],
+                     item['date_of_manufacture'], item['condition'], item['wear'], item['number_of_items'],
+                     item['dimensions'], item['shipping'], item['return_policy'], item['seller_since'],
+                     item['typical_response_time'])
     try:
         cursor.execute(sql)
     except pymysql.err.IntegrityError as e:
@@ -332,4 +365,4 @@ def test_get_url(start_url):
 
 if __name__ == '__main__':
     main(True)
-    #test_get_url('https://www.1stdibs.com/furniture/lighting/chandeliers-pendant-lights/tiffany-pendel-lamp-indiana-certificate/id-f_8778193/')
+    #test_get_url('https://www.1stdibs.com/furniture/seating/stools/set-of-five-contemporary-modern-industrial-style-bar-stools/id-f_8844993/')
