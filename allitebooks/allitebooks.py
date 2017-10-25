@@ -41,21 +41,31 @@ def scrape_books(keyword, output):
         writer = csv.writer(f)
         writer.writerows(books)
 
+def download_book(link):
+    html = requests.get(link)
+    book_name = link.split('/')[-1]
+    with open(book_name, 'wb') as f:
+        f.write(html.content)
+
 def main():
     
     usage = 'myprog -k <keyword> [-o <filename>]'
     parser = OptionParser(usage)
     parser.add_option('-k', '--keyword', type='string', dest='keyword')
     parser.add_option('-o', '--output', type='string', dest='output', default='result.csv')
+    parser.add_option('-d', '--download', type='string', dest='download')
     options, args = parser.parse_args(sys.argv)
 
-    if not options.keyword:
-        parser.print_usage()
+    if options.keyword:
+        print ('scraping keyword[%s] to file[%s]' % (options.keyword, options.output))
+        scrape_books(options.keyword, options.output)
         return
-
-    print ('scraping keyword[%s] to file[%s]' % (options.keyword, options.output))
-    scrape_books(options.keyword, options.output)
-    
+    elif options.download:
+        print ('downloading [%s]' % options.download.split('/')[-1])
+        download_book(options.download)
+        return
+    else:
+        parser.print_usage()
 
 if __name__ == '__main__':
     main()
