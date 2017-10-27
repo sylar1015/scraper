@@ -59,6 +59,8 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
             if put_product(conn, cursor, product):
                 put_status(conn, cursor, product_id, product['price'], product['status'], product_link, product_image,
                        category_id, category2_id, category3_id)
+            else:
+                logger.error('trace:%s', product_link)
         else:
             product_price = item.xpath('./span[contains(@class, "product-price")]/span/@data-usd')
             product_status = 0
@@ -173,8 +175,14 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     shipping = data.get('shippingCopy', {}).get('pdpShippingDescriptionNoQuotes', {}).get('value', '')
     number_of_items = data_item.get('num_item', 0)
     condition = data_item.get('condition', '')
+    if condition:
+        condition = condition.replace('"', '')
     wear = data_item.get('wear', '')
     date_of_manufacture = data_item.get('creation_date', '')
+    if not date_of_manufacture:
+        date_of_manufacture = ''
+    else:
+        date_of_manufacture = date_of_manufacture.replace('"', '')
     dimension = data_item.get('measurements', {})
     dimension = 'height:%s, width:%s, depth:%s' % \
                 (dimension.get('height', ''), dimension.get('width', ''), dimension.get('depth', ''))
@@ -229,6 +237,10 @@ def put_product(conn, cursor, item):
     except pymysql.err.IntegrityError as e:
         logger.error(e)
         return False
+    except Exception as e:
+        logger.error(e)
+        return False
+    
     conn.commit()
     return True
 
