@@ -17,7 +17,7 @@ fmt = '[%(name)s][%(levelname)s]:%(message)s'
 h = logging.StreamHandler(sys.stdout)
 h.setFormatter(logging.Formatter(fmt))
 logger.addHandler(h)
-logger.setLevel(logging.WARN)
+logger.setLevel(logging.INFO)
 
 def is_new_product(conn, cursor, product_id):
     sql = 'select * from product where product_id=%d' % product_id
@@ -27,6 +27,12 @@ def is_new_product(conn, cursor, product_id):
     if product:
         return False
     return True
+
+def get_style(conn, cursor, product_id):
+    sql = 'select style_of, period_of from product where product_id=%d' % product_id
+    cursor.execute(sql)
+    return cursor.fetchone()
+
 
 def get_page(conn, cursor, session, link):
 
@@ -50,21 +56,27 @@ def get_page(conn, cursor, session, link):
         product_id = int(product_link[product_link.find('id-f_') + 5: -1])
         product_link = base_url + product_link
         if is_new_product(conn, cursor, product_id):
-            logger.info('scraping product:[%s] ...', product_link)
-            loop_enter = time.time()
             product = get_url(conn, cursor, session, product_link)
-            loop_leave = time.time()
-            logger.info('scraping product:[%s] cost %2f sec ...', product_link, loop_leave - loop_enter)
             #add exception handler
             if not product:
                 error += 1
                 logger.error('parse product(%s, %s) failed ...', product_id, product_link)
             else:
-                new += 1
-                logger.error('new product(%s, %s)', product_id, product_link)
+                if product_id != product['product_id']:
+                    logger.warning('duplicate(%d, %d)', product_id, product['product_id'])
+                    normal +=1
+                else:
+                    new += 1
+                    logger.error('new product(%s, %s)', product_id, product_link)
         else:
-            normal += 1
-            logger('product (%s, %s) already in database', product_product_link)
+            v1, v2 = get_style(conn, cursor, product_id)
+            if v1 != 'Baroque' and v2 != 'Baroque':
+                logger.error('%s:%s', v1, v2)
+                error += 1
+                logger.info('error product(%d, %s)', product_id, product_link)
+            else:
+                normal += 1
+            #logger.info('product (%s, %s) already in database', product_id, product_link)
             
 
     return normal, total, new, error
@@ -191,9 +203,6 @@ def get_url(conn, cursor, session, link):
     item['material'] = material
 
     item['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    item['category_id'] = category_id
-    item['category2_id'] = category2_id
-    item['category3_id'] = category3_id
 
     return item
 
@@ -230,7 +239,7 @@ def main(loop_forever = False):
 
     for i in range(2, total_pages + 1):
         page_url = link + '?page=%d' % i
-        logger.info('scraping page:[%s] ...' % page_url)
+        #logger.info('scraping page:[%s] ...' % page_url)
         loop_enter = time.time()
         v1, v2, v3, v4 = get_page(conn, cursor, session, page_url)
         normal += v1
@@ -238,11 +247,11 @@ def main(loop_forever = False):
         new += v3
         error += v4
         loop_leave = time.time()
-        logger.info('scraping page:[%s] cost %2f sec ...' % (page_url, loop_leave - loop_enter))
+        #logger.info('scraping page:[%s] cost %2f sec ...' % (page_url, loop_leave - loop_enter))
         logger.info('%d/%d, %d, %d', v1, v2, v3, v4)
 
     session.close()
-    logger.info('statistic: %d, %d, %d, %d', normal, total, new, errr)
+    logger.info('statistic: %d, %d, %d, %d', normal, total, new, error)
 
     cursor.close()
     conn.close()
