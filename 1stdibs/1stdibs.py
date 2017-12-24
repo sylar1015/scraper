@@ -40,6 +40,10 @@ def get_product_id_from_link(link):
     pos = link.find('id-j_')
     if pos > 0:
         return int(link[pos + 5 : -1])
+    
+    pos = link.find('id-v_')
+    if pos > 0:
+        return int(link[pos + 5 : -1])
 
     raise Exception('failed to get product id %s' % link)
 
