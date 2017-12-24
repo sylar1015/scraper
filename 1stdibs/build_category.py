@@ -17,6 +17,8 @@ logger.setLevel(logging.INFO)
 
 categories = [
     ('Furniture', 'https://www.1stdibs.com/furniture/'),
+    ('Art', 'https://www.1stdibs.com/art/'),
+    ('Jewelry', 'https://www.1stdibs.com/jewelry/'),
     ]
 
 def build_category3(conn, cursor, session, name, link, parent_id):

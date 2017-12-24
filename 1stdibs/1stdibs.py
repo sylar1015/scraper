@@ -17,7 +17,7 @@ fmt = '[%(name)s][%(levelname)s]:%(message)s'
 h = logging.StreamHandler(sys.stdout)
 h.setFormatter(logging.Formatter(fmt))
 logger.addHandler(h)
-logger.setLevel(logging.WARN)
+logger.setLevel(logging.INFO)
 
 def is_new_product(conn, cursor, product_id):
     sql = 'select * from product where product_id=%d' % product_id
@@ -27,6 +27,21 @@ def is_new_product(conn, cursor, product_id):
     if product:
         return False
     return True
+
+def get_product_id_from_link(link):
+    pos = link.find('id-f_')
+    if pos > 0:
+        return int(link[pos + 5 : -1])
+
+    pos = link.find('id-a_')
+    if pos > 0:
+        return int(link[pos + 5 : -1])
+
+    pos = link.find('id-j_')
+    if pos > 0:
+        return int(link[pos + 5 : -1])
+
+    raise Exception('failed to get product id %s' % link)
 
 def get_page(conn, cursor, session, link, category_id, category2_id, category3_id):
 
@@ -40,7 +55,7 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
         if not product_link:
             continue
         product_link = product_link[0]
-        product_id = int(product_link[product_link.find('id-f_') + 5: -1])
+        product_id = get_product_id_from_link(product_link)
         product_link = base_url + product_link
         product_image = item.xpath('./a/div/img/@src')
         product_image = product_image[0] if product_image else ''
