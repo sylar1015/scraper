@@ -19,8 +19,8 @@ h.setFormatter(logging.Formatter(fmt))
 logger.addHandler(h)
 logger.setLevel(logging.INFO)
 
-def is_new_product(conn, cursor, product_id):
-    sql = 'select * from product where product_id=%d' % product_id
+def is_new_product(conn, cursor, product_id, cid):
+    sql = 'select * from product where product_id=%d and category_id=%d' % (product_id, cid)
     cursor.execute(sql)
     product = cursor.fetchone()
 
@@ -65,7 +65,7 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
         product_image = product_image[0] if product_image else ''
         if product_image.endswith('.gif'):
             product_image = item.xpath('./a/div/noscript/img/@src')[0]
-        if is_new_product(conn, cursor, product_id):
+        if is_new_product(conn, cursor, product_id, category_id):
             logger.info('scraping product:[%s] ...', product_link)
             loop_enter = time.time()
             product = get_url(conn, cursor, session, product_link, category_id, category2_id, category3_id)
@@ -98,7 +98,7 @@ def get_page(conn, cursor, session, link, category_id, category2_id, category3_i
                         product_status = 1
                     else:
                         product_status = 2
-            last_status = get_last_status(conn, cursor, product_id)
+            last_status = get_last_status(conn, cursor, product_id, category_id)
             if last_status != product_status:
                 put_status(conn, cursor, product_id, product_price, product_status, product_link, product_image,
                            category_id, category2_id, category3_id)
@@ -289,9 +289,9 @@ def put_status(conn, cursor, product_id, product_price, product_status, product_
         return
     conn.commit()
 
-def get_last_status(conn, cursor, product_id):
+def get_last_status(conn, cursor, product_id, cid):
 
-    sql = 'select status from status where product_id=%d order by id desc' % product_id
+    sql = 'select status from status where product_id=%d and category_id=%d order by id desc' % (product_id, cid)
     cursor.execute(sql)
     status = cursor.fetchone()
     if not status:
