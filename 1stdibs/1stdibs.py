@@ -20,7 +20,7 @@ logger.addHandler(h)
 logger.setLevel(logging.INFO)
 
 def is_new_product(conn, cursor, product_id, cid):
-    sql = 'select * from product where product_id=%d and category_id=%d' % (product_id, cid)
+    sql = 'select * from product2 where product_id=%d and category_id=%d' % (product_id, cid)
     cursor.execute(sql)
     product = cursor.fetchone()
 
@@ -235,7 +235,7 @@ def get_url(conn, cursor, session, link, category_id, category2_id, category3_id
     return item
 
 def put_product(conn, cursor, item):
-    sql = 'insert into product ' \
+    sql = 'insert into product2 ' \
           '(product_id, title, price, status, period_of, style_of, origin, period, material, creator, \
           timestamp, category_id, category2_id, category3_id, dealer, dealer_location, dealer_link, \
             date_of_manufacture, `condition`, wear, number_of_items, dimensions, shipping, return_policy, \
@@ -264,7 +264,7 @@ def put_product(conn, cursor, item):
     return True
 
 def update_product(conn, cursor, product_id, price):
-    sql = 'update product set price=%d where product_id=%d' % (product_id, price)
+    sql = 'update product2 set price=%d where product_id=%d' % (product_id, price)
 
     try:
         cursor.execute(sql)
@@ -278,7 +278,7 @@ def put_status(conn, cursor, product_id, product_price, product_status, product_
                category_id, category2_id, category3_id):
 
     logger.info('detect new status of product:[%d] ...', product_id)
-    sql = 'insert into status (product_id, price, status, timestamp, link, image, category_id, category2_id, category3_id) ' \
+    sql = 'insert into status2 (product_id, price, status, timestamp, link, image, category_id, category2_id, category3_id) ' \
         'values (%d, %d, %d, "%s", "%s", "%s" ,%d, %d, %d)' % \
         (product_id, product_price, product_status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
          product_link, product_image,
@@ -291,7 +291,7 @@ def put_status(conn, cursor, product_id, product_price, product_status, product_
 
 def get_last_status(conn, cursor, product_id, cid):
 
-    sql = 'select status from status where product_id=%d and category_id=%d order by id desc' % (product_id, cid)
+    sql = 'select status from status2 where product_id=%d and category_id=%d order by id desc' % (product_id, cid)
     cursor.execute(sql)
     status = cursor.fetchone()
     if not status:
@@ -393,8 +393,63 @@ def test_get_url(start_url):
     cursor.close()
     conn.close()
 
+def migrate():
+    
+    enter = time.time()
+    conn = pymysql.connect(host = '127.0.0.1', user = 'root', password = '123456',
+            db = '1stdibs', charset = 'utf8')
+    cursor = conn.cursor()
+    sql = 'select * from product'
+    cursor.execute(sql)
+    items = cursor.fetchall()
+    for item in items:
+        idx, product_id, title, price, status, period_of, style_of, \
+        origin, period, creator, material, timestamp, category_id, \
+        category2_id, category3_id, dealer, dealer_link, dealer_location, \
+        condition, date_of_manufacture, dimensions, number_of_items, recognized, \
+        return_policy, seller_since, shipping, top_seller, typical_response_time, wear = item
 
+        sql = 'insert into product2 ' \
+            '(product_id, title, price, status, period_of, style_of, origin, period, material, creator, \
+          timestamp, category_id, category2_id, category3_id, dealer, dealer_location, dealer_link, \
+            date_of_manufacture, `condition`, wear, number_of_items, dimensions, shipping, return_policy, \
+            seller_since, typical_response_time) ' \
+          'values (%d, "%s", %d, %d, "%s", "%s", "%s", "%s", "%s", "%s", "%s", %d, %d, %d, "%s", "%s", "%s", \
+                    "%s", "%s", "%s", %d, "%s", "%s", "%s", "%s", "%s")' % \
+            (product_id, title, price, status, period_of, style_of, origin, period, material, creator,
+            timestamp, category_id, category2_id, category3_id, dealer, dealer_location, dealer_link,
+            date_of_manufacture, condition, wear, number_of_items, dimensions, shipping, return_policy,
+            seller_since, typical_response_time)
+
+        try:
+            cursor.execute(sql)
+        except Exception as e:
+            logger.error(sql)
+            break
+        conn.commit()
+
+    sql = 'select * from status'
+    cursor.execute(sql)
+    items = cursor.fetchall()
+    for item in items:
+        idx, price, status, timestamp, product_id, category_id, \
+        category2_id, category3_id, image, link = item
+        sql = 'insert into status2 (product_id, price, status, timestamp, link, image, category_id, category2_id, category3_id) ' \
+        'values (%d, %d, %d, "%s", "%s", "%s" ,%d, %d, %d)' % \
+        (product_id, price, status, timestamp, link, image, category_id, category2_id, category3_id)
+
+        try:
+            cursor.execute(sql)
+        except Exception as e:
+            logger.error(sql)
+            break
+        conn.commit()
+    cursor.close()
+    conn.close()
+    leave = time.time()
+    logger.warning('cost %2f sec', leave - enter)
 
 if __name__ == '__main__':
+    #migrate()
     main()
     #test_get_url('https://www.1stdibs.com/furniture/seating/stools/set-of-five-contemporary-modern-industrial-style-bar-stools/id-f_8844993/')
